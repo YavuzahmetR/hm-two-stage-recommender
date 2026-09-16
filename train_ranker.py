@@ -135,6 +135,66 @@ def evaluate_baselines(
         for metric_name, value in metrics.items():
             print(f"{metric_name}: {value:.6f}")
 
+
+def evaluate_training(
+    model: LGBMRanker,
+    train: pl.DataFrame,
+) -> None:
+    actual = pl.read_parquet(
+        PROCESSED_DIR / "train_actual.parquet"
+    ).select("customer_id", "actual_items")
+
+    features = train.select(
+        pl.col(FEATURES).cast(pl.Float32)
+    ).to_numpy()
+
+    scores = model.predict(features)
+
+    model_predictions = (
+        train
+        .select("customer_id", "article_id")
+        .with_columns(pl.Series("score", scores))
+        .sort(
+            ["customer_id", "score", "article_id"],
+            descending=[False, True, False],
+        )
+        .group_by("customer_id", maintain_order=True)
+        .agg(pl.col("article_id").head(12).alias("predictions"))
+        .select("customer_id", "predictions")
+    )
+
+    rule_predictions = (
+        train
+        .sort(
+            [
+                "customer_id",
+                "repeat_rank",
+                "covisit_rank",
+                "popularity_rank",
+                "article_id",
+            ],
+            nulls_last=True,
+        )
+        .group_by("customer_id", maintain_order=True)
+        .agg(pl.col("article_id").head(12).alias("predictions"))
+        .select("customer_id", "predictions")
+    )
+
+    methods = {
+        "Candidate order": rule_predictions,
+        "LightGBM v1": model_predictions,
+    }
+
+    print(f"\nTraining evaluation: {actual.height} customers")
+
+    for name, predictions in methods.items():
+        metrics = evaluate_predictions(actual, predictions)
+
+        print(f"\nTraining - {name}")
+
+        for metric_name, value in metrics.items():
+            print(f"{metric_name}: {value:.6f}")
+
 def main():
     train = pl.read_parquet(
         PROCESSED_DIR / "train_candidates.parquet"
@@ -223,6 +283,7 @@ def main():
 
     print("\nModel saved.")
     evaluate_baselines(validation, actual)
+    evaluate_training(model, train)
 
 
 if __name__ == "__main__":
