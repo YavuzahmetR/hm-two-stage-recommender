@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from hashlib import sha256
+from collections import Counter
 
 import polars as pl
 
@@ -19,6 +20,14 @@ def build_candidate_rows(
         neighbors,
         k=50,
     )
+
+    covisit_scores = Counter()
+    recent_set = set(recent_items)
+
+    for source in recent_items:
+        for target,count in neighbors.get(source, []):
+            if target not in recent_set:
+                covisit_scores[target] += count
 
     repeat_ranks = {
         article_id: rank
@@ -52,6 +61,7 @@ def build_candidate_rows(
                 "repeat_rank": repeat_ranks.get(article_id),
                 "covisit_rank": covisit_ranks.get(article_id),
                 "popularity_rank": popularity_ranks.get(article_id),
+                "covisit_score": covisit_scores.get(article_id, 0),
             }
         )
 
@@ -130,6 +140,7 @@ def build_training_snapshot(
         "popularity_rank": pl.Int32,
         "label": pl.Int8,
         "as_of": pl.Date,
+        "covisit_score": pl.Int32,
     }
 
     batches = []
@@ -183,21 +194,44 @@ def main():
         try_parse_dates=True,
     )
 
-    validation_start = date(2020, 9, 9)
-
-    dataset, actual = build_training_snapshot(
-        transactions,
-        as_of=validation_start,
-        max_customers=10000,
-    )
-
     output_dir = DATA_DIR.parent.parent / "processed"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    dataset.write_parquet(output_dir / "validation_candidates.parquet")
-    actual.write_parquet(output_dir / "validation_actual.parquet")
+    snapshots = [
+        ("train", date(2020, 9, 2), 5000),
+        ("validation", date(2020, 9, 9), 10000),
+    ]
 
-    print("\nValidation files saved.")
+    for split_name, as_of, customer_limit in snapshots:
+        print(f"\nBuilding {split_name} snapshot...")
+
+        dataset, actual = build_training_snapshot(
+            transactions,
+            as_of=as_of,
+            max_customers=customer_limit,
+        )
+
+        score_summary = dataset.select(
+            pl.col("covisit_score").min().alias("min_score"),
+            pl.col("covisit_score").max().alias("max_score"),
+            (pl.col("covisit_score") > 0)
+            .sum()
+            .alias("rows_with_score"),
+        )
+
+        print(score_summary)
+
+        dataset.write_parquet(
+            output_dir / f"{split_name}_candidates_v3.parquet"
+        )
+
+        actual.write_parquet(
+            output_dir / f"{split_name}_actual_v3.parquet"
+        )
+
+        print(f"{split_name} snapshot saved.")
+
+        del dataset, actual
 
 
 if __name__ == "__main__":

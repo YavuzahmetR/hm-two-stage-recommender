@@ -13,6 +13,7 @@ FEATURES = [
     "repeat_rank",
     "covisit_rank",
     "popularity_rank",
+    "covisit_score"
 ]
 
 PROCESSED_DIR = DATA_DIR.parent.parent / "processed"
@@ -141,7 +142,7 @@ def evaluate_training(
     train: pl.DataFrame,
 ) -> None:
     actual = pl.read_parquet(
-        PROCESSED_DIR / "train_actual.parquet"
+        PROCESSED_DIR / "train_actual_v3.parquet"
     ).select("customer_id", "actual_items")
 
     features = train.select(
@@ -182,7 +183,7 @@ def evaluate_training(
 
     methods = {
         "Candidate order": rule_predictions,
-        "LightGBM v2": model_predictions,
+        "LightGBM v3": model_predictions,
     }
 
     print(f"\nTraining evaluation: {actual.height} customers")
@@ -197,15 +198,15 @@ def evaluate_training(
 
 def main():
     train = pl.read_parquet(
-        PROCESSED_DIR / "train_candidates.parquet"
+        PROCESSED_DIR / "train_candidates_v3.parquet"
     ).sort(["customer_id", "article_id"])
 
     validation = pl.read_parquet(
-        PROCESSED_DIR / "validation_candidates.parquet"
+        PROCESSED_DIR / "validation_candidates_v3.parquet"
     )
 
     actual = pl.read_parquet(
-        PROCESSED_DIR / "validation_actual.parquet"
+        PROCESSED_DIR / "validation_actual_v3.parquet"
     ).select("customer_id", "actual_items")
 
     train_groups = (
@@ -231,7 +232,7 @@ def main():
         objective="lambdarank",
         n_estimators=100,
         learning_rate=0.05,
-        num_leaves=5,
+        num_leaves=15,
         min_child_samples=50,
         reg_lambda=1.0,
         random_state=42,
@@ -278,7 +279,7 @@ def main():
         print(f"{name}: {importance:.2f}")
 
     model.booster_.save_model(
-         str(PROCESSED_DIR / "ranker_v2.txt")
+         str(PROCESSED_DIR / "ranker_v3.txt")
     )
 
     print("\nModel saved.")
