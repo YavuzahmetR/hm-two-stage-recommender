@@ -1,0 +1,139 @@
+import polars as pl
+from lightgbm import LGBMRanker
+
+from popularity_baseline import DATA_DIR, average_precision_at_k
+
+
+FEATURES = [
+    "repeat_rank",
+    "covisit_rank",
+    "popularity_rank",
+]
+
+PROCESSED_DIR = DATA_DIR.parent.parent / "processed"
+
+
+def evaluate_predictions(
+    actual: pl.DataFrame,
+    predictions: pl.DataFrame,
+) -> dict[str, float]:
+    prediction_lookup = dict(predictions.iter_rows())
+
+    recall_sum = 0.0
+    hit_customers = 0
+    ap_sum = 0.0
+
+    if actual.is_empty():
+        raise ValueError("No customers to evaluate.")
+
+    for customer_id, actual_items in actual.iter_rows():
+        predicted = prediction_lookup.get(customer_id, [])
+
+        if len(predicted) != 12 or len(set(predicted)) != 12:
+            raise ValueError("Expected 12 unique recommendations.")
+
+        relevant = set(actual_items)
+        hits = len(relevant.intersection(predicted))
+
+        recall_sum += hits / len(relevant)
+        hit_customers += int(hits > 0)
+        ap_sum += average_precision_at_k(actual_items, predicted)
+
+    return {
+        "recall_at_12": recall_sum / actual.height,
+        "hit_rate_at_12": hit_customers / actual.height,
+        "map_at_12": ap_sum / actual.height,
+    }
+
+
+def main():
+    train = pl.read_parquet(
+        PROCESSED_DIR / "train_candidates.parquet"
+    ).sort(["customer_id", "article_id"])
+
+    validation = pl.read_parquet(
+        PROCESSED_DIR / "validation_candidates.parquet"
+    )
+
+    actual = pl.read_parquet(
+        PROCESSED_DIR / "validation_actual.parquet"
+    ).select("customer_id", "actual_items")
+
+    train_groups = (
+        train.group_by("customer_id", maintain_order=True)
+        .len()["len"]
+        .to_numpy()
+    )
+
+    if train_groups.sum() != train.height:
+        raise ValueError("Group sizes do not match the row count.")
+
+    x_train = train.select(
+        pl.col(FEATURES).cast(pl.Float32)
+    ).to_numpy()
+
+    y_train = train["label"].to_numpy()
+
+    x_validation = validation.select(
+        pl.col(FEATURES).cast(pl.Float32)
+    ).to_numpy()
+
+    model = LGBMRanker(
+        objective="lambdarank",
+        n_estimators=100,
+        learning_rate=0.05,
+        num_leaves=15,
+        min_child_samples=50,
+        reg_lambda=1.0,
+        random_state=42,
+        n_jobs=4,
+        deterministic=True,
+        force_col_wise=True,
+        importance_type="gain",
+    )
+
+    print("Training ranker...")
+
+    model.fit(
+        x_train,
+        y_train,
+        group=train_groups,
+        feature_name=FEATURES,
+    )
+
+    scores = model.predict(x_validation)
+
+    predictions = (
+        validation
+        .select("customer_id", "article_id")
+        .with_columns(pl.Series("score", scores))
+        .sort(
+            ["customer_id", "score", "article_id"],
+            descending=[False, True, False],
+        )
+        .group_by("customer_id", maintain_order=True)
+        .agg(pl.col("article_id").head(12).alias("predictions"))
+        .select("customer_id", "predictions")
+    )
+
+    metrics = evaluate_predictions(actual, predictions)
+
+    print(f"\nEvaluated customers: {actual.height}")
+
+    for name, value in metrics.items():
+        print(f"{name}: {value:.6f}")
+
+    print("\nFeature importance:")
+
+    for name, importance in zip(FEATURES, model.feature_importances_):
+        print(f"{name}: {importance:.2f}")
+
+    model.booster_.save_model(
+        str(PROCESSED_DIR / "ranker_v1.txt")
+    )
+
+    print("\nModel saved.")
+
+
+if __name__ == "__main__":
+    main()
