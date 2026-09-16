@@ -1,7 +1,12 @@
 import polars as pl
 from lightgbm import LGBMRanker
 
-from popularity_baseline import DATA_DIR, average_precision_at_k
+from popularity_baseline import (
+    DATA_DIR,
+    VALIDATION_START,
+    average_precision_at_k,
+    build_popularity,
+)
 
 
 FEATURES = [
@@ -45,6 +50,90 @@ def evaluate_predictions(
         "map_at_12": ap_sum / actual.height,
     }
 
+def evaluate_baselines(
+    validation: pl.DataFrame,
+    actual: pl.DataFrame,
+) -> None:
+    transactions = pl.scan_csv(
+        DATA_DIR / "transactions_train.csv",
+        schema_overrides={
+            "customer_id": pl.String,
+            "article_id": pl.String,
+        },
+        try_parse_dates=True,
+    )
+
+    popular_items = build_popularity(
+        transactions,
+        as_of=VALIDATION_START,
+        k=12,
+    )["article_id"].to_list()
+
+    recent_by_customer = (
+        validation
+        .filter(pl.col("repeat_rank").is_not_null())
+        .sort(["customer_id", "repeat_rank", "article_id"])
+        .group_by("customer_id", maintain_order=True)
+        .agg(pl.col("article_id").alias("recent_items"))
+        .select("customer_id", "recent_items")
+    )
+
+    recent_lookup = dict(recent_by_customer.iter_rows())
+
+    popularity_rows = []
+    repeat_rows = []
+
+    for customer_id in actual["customer_id"].to_list():
+        popularity_rows.append(
+            {
+                "customer_id": customer_id,
+                "predictions": popular_items,
+            }
+        )
+
+        recent_items = recent_lookup.get(customer_id, [])
+
+        repeat_predictions = list(
+            dict.fromkeys(recent_items + popular_items)
+        )[:12]
+
+        repeat_rows.append(
+            {
+                "customer_id": customer_id,
+                "predictions": repeat_predictions,
+            }
+        )
+
+    candidate_order = (
+        validation
+        .sort(
+            [
+                "customer_id",
+                "repeat_rank",
+                "covisit_rank",
+                "popularity_rank",
+                "article_id",
+            ],
+            nulls_last=True,
+        )
+        .group_by("customer_id", maintain_order=True)
+        .agg(pl.col("article_id").head(12).alias("predictions"))
+        .select("customer_id", "predictions")
+    )
+
+    baseline_predictions = {
+        "Popularity": pl.DataFrame(popularity_rows),
+        "Repeat + popularity": pl.DataFrame(repeat_rows),
+        "Candidate order": candidate_order,
+    }
+
+    for name, predictions in baseline_predictions.items():
+        metrics = evaluate_predictions(actual, predictions)
+
+        print(f"\n{name}")
+
+        for metric_name, value in metrics.items():
+            print(f"{metric_name}: {value:.6f}")
 
 def main():
     train = pl.read_parquet(
@@ -133,6 +222,7 @@ def main():
     )
 
     print("\nModel saved.")
+    evaluate_baselines(validation, actual)
 
 
 if __name__ == "__main__":
