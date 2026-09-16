@@ -148,7 +148,7 @@ def evaluate_training(
         pl.col(FEATURES).cast(pl.Float32)
     ).to_numpy()
 
-    scores = model.predict(features)
+    scores = model.booster_.predict(features)
 
     model_predictions = (
         train
@@ -182,7 +182,7 @@ def evaluate_training(
 
     methods = {
         "Candidate order": rule_predictions,
-        "LightGBM v1": model_predictions,
+        "LightGBM v2": model_predictions,
     }
 
     print(f"\nTraining evaluation: {actual.height} customers")
@@ -231,7 +231,7 @@ def main():
         objective="lambdarank",
         n_estimators=100,
         learning_rate=0.05,
-        num_leaves=15,
+        num_leaves=5,
         min_child_samples=50,
         reg_lambda=1.0,
         random_state=42,
@@ -250,7 +250,7 @@ def main():
         feature_name=FEATURES,
     )
 
-    scores = model.predict(x_validation)
+    scores = model.booster_.predict(x_validation)
 
     predictions = (
         validation
@@ -278,7 +278,7 @@ def main():
         print(f"{name}: {importance:.2f}")
 
     model.booster_.save_model(
-        str(PROCESSED_DIR / "ranker_v1.txt")
+         str(PROCESSED_DIR / "ranker_v2.txt")
     )
 
     print("\nModel saved.")
