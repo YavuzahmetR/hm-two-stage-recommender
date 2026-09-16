@@ -65,7 +65,7 @@ def evaulate_recall(
     ).collect()
 
 
-def average_presicion_at_k(
+def average_precision_at_k(
         actual: list[str],
         predicted: list[str],
         k: int = 12
