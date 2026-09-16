@@ -183,20 +183,21 @@ def main():
         try_parse_dates=True,
     )
 
-    training_start = date(2020, 9, 2)
+    validation_start = date(2020, 9, 9)
 
     dataset, actual = build_training_snapshot(
         transactions,
-        as_of=training_start,
+        as_of=validation_start,
+        max_customers=10000,
     )
 
     output_dir = DATA_DIR.parent.parent / "processed"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    dataset.write_parquet(output_dir / "train_candidates.parquet")
-    actual.write_parquet(output_dir / "train_actual.parquet")
+    dataset.write_parquet(output_dir / "validation_candidates.parquet")
+    actual.write_parquet(output_dir / "validation_actual.parquet")
 
-    print("\nTraining files saved.")
+    print("\nValidation files saved.")
 
 
 if __name__ == "__main__":
