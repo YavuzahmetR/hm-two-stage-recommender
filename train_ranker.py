@@ -13,7 +13,9 @@ FEATURES = [
     "repeat_rank",
     "covisit_rank",
     "popularity_rank",
-    "covisit_score"
+    "covisit_score",
+    "user_item_purchase_count_28d",
+    "user_item_recency_days",
 ]
 
 PROCESSED_DIR = DATA_DIR.parent.parent / "processed"
@@ -142,7 +144,7 @@ def evaluate_training(
     train: pl.DataFrame,
 ) -> None:
     actual = pl.read_parquet(
-        PROCESSED_DIR / "train_actual_v3.parquet"
+        PROCESSED_DIR / "train_actual_v4.parquet"
     ).select("customer_id", "actual_items")
 
     features = train.select(
@@ -198,15 +200,15 @@ def evaluate_training(
 
 def main():
     train = pl.read_parquet(
-        PROCESSED_DIR / "train_candidates_v3.parquet"
+        PROCESSED_DIR / "train_candidates_v4.parquet"
     ).sort(["customer_id", "article_id"])
 
     validation = pl.read_parquet(
-        PROCESSED_DIR / "validation_candidates_v3.parquet"
+        PROCESSED_DIR / "validation_candidates_v4.parquet"
     )
 
     actual = pl.read_parquet(
-        PROCESSED_DIR / "validation_actual_v3.parquet"
+        PROCESSED_DIR / "validation_actual_v4.parquet"
     ).select("customer_id", "actual_items")
 
     train_groups = (
@@ -279,7 +281,7 @@ def main():
         print(f"{name}: {importance:.2f}")
 
     model.booster_.save_model(
-         str(PROCESSED_DIR / "ranker_v3.txt")
+         str(PROCESSED_DIR / "ranker_v4.txt")
     )
 
     print("\nModel saved.")

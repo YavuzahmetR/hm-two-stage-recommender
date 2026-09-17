@@ -67,7 +67,33 @@ def build_candidate_rows(
 
     return rows
 
-
+def build_user_item_features(
+    transactions: pl.LazyFrame,
+    as_of: date,
+    customer_ids: list[str],
+) -> pl.DataFrame:
+    return (
+        transactions
+        .filter(
+            (pl.col("t_dat") >= as_of - timedelta(days=28))
+            & (pl.col("t_dat") < as_of)
+            & pl.col("customer_id").is_in(customer_ids)
+            & pl.col("article_id").is_not_null()
+        )
+        .group_by(["customer_id", "article_id"])
+        .agg(
+            pl.len().alias("user_item_purchase_count_28d"),
+            pl.col("t_dat").max().alias("last_purchase"),
+        )
+        .with_columns(
+            (pl.lit(as_of) - pl.col("last_purchase"))
+            .dt.total_days()
+            .cast(pl.Int32)
+            .alias("user_item_recency_days")
+        )
+        .drop("last_purchase")
+        .collect()
+    )
 
 def build_training_snapshot(
     transactions: pl.LazyFrame,
@@ -176,6 +202,55 @@ def build_training_snapshot(
 
     dataset = pl.concat(batches)
 
+    user_item_features = build_user_item_features(
+        transactions,
+        as_of=as_of,
+        customer_ids=selected_ids
+    )
+
+    original_row_count = dataset.height
+
+    dataset = (
+        dataset
+        .join(
+            user_item_features,
+            on=["customer_id", "article_id"],
+            how="left",
+            validate="m:1",
+        )
+        .with_columns(
+            pl.col("user_item_purchase_count_28d").fill_null(0)
+        )
+    )
+
+    if dataset.height != original_row_count:
+        raise ValueError("Feature join changed the candidate row count.")
+
+    known_recency = dataset["user_item_recency_days"].drop_nulls()
+
+
+    if len(known_recency) > 0:
+        if known_recency.min() < 1 or known_recency.max() > 28:
+            raise ValueError("Recency must be between 1 and 28 days.")
+
+    print("\nUser-item feature summary:")
+    print(
+        dataset.select(
+            pl.col("user_item_purchase_count_28d")
+            .max()
+            .alias("max_purchase_count"),
+            pl.col("user_item_recency_days")
+            .min()
+            .alias("min_recency"),
+            pl.col("user_item_recency_days")
+            .max()
+            .alias("max_recency"),
+            pl.col("user_item_recency_days")
+            .null_count()
+            .alias("rows_without_recent_purchase"),
+        )
+    )
+
     print(f"Selected customers: {selected_actual.height}")
     print(f"Candidate rows: {dataset.height}")
     print(f"Positive rows: {dataset['label'].sum()}")
@@ -222,11 +297,11 @@ def main():
         print(score_summary)
 
         dataset.write_parquet(
-            output_dir / f"{split_name}_candidates_v3.parquet"
+            output_dir / f"{split_name}_candidates_v4.parquet"
         )
 
         actual.write_parquet(
-            output_dir / f"{split_name}_actual_v3.parquet"
+            output_dir / f"{split_name}_actual_v4.parquet"
         )
 
         print(f"{split_name} snapshot saved.")
