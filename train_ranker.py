@@ -185,7 +185,7 @@ def evaluate_training(
 
     methods = {
         "Candidate order": rule_predictions,
-        "LightGBM v3": model_predictions,
+        "LightGBM v4": model_predictions,
     }
 
     print(f"\nTraining evaluation: {actual.height} customers")
