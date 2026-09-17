@@ -131,6 +131,7 @@ def main():
             )[:12],
             "Candidate order": items[:12],
             f"LightGBM {VERSION}": model_items,
+            "Hybrid v4": model_items if recent_items else popular_items,
         }
 
         measurements = {}
