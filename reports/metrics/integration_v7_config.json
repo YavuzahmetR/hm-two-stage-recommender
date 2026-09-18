@@ -1,0 +1,33 @@
+{
+  "tower_epoch": 5,
+  "tower_quota": 25,
+  "candidate_count": 150,
+  "features": [
+    "repeat_rank",
+    "covisit_rank",
+    "popularity_rank",
+    "covisit_score",
+    "user_item_purchase_count_28d",
+    "user_item_recency_days",
+    "variant_rank",
+    "from_variant",
+    "item_popularity_7d",
+    "item_popularity_28d",
+    "category_affinity",
+    "tower_score",
+    "tower_rank"
+  ],
+  "train_dates": [
+    "2020-08-19",
+    "2020-08-26",
+    "2020-09-02"
+  ],
+  "validation_date": "2020-09-09",
+  "ranker_params": {
+    "n_estimators": 40,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 50,
+    "reg_lambda": 1.0
+  }
+}
