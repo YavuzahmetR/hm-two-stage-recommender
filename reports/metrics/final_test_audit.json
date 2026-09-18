@@ -1,0 +1,16 @@
+{
+  "customers": 10000,
+  "candidate_rows": 1500000,
+  "candidate_recall_at_150": 0.18825603888932543,
+  "candidate_hit_rate_at_150": 0.3577,
+  "checks_passed": [
+    "AP sanity examples",
+    "Frozen model and source hashes",
+    "Candidate builder receives only pre-test transactions",
+    "Candidate builder receives empty target lists",
+    "150 unique candidates per customer",
+    "Historical recency bounds",
+    "Finite prediction scores",
+    "12 unique recommendations per customer"
+  ]
+}
