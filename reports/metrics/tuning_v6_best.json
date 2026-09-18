@@ -1,0 +1,38 @@
+{
+  "trial": "leaves31",
+  "params": {
+    "objective": "lambdarank",
+    "metric": "None",
+    "n_estimators": 600,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 50,
+    "reg_lambda": 1.0,
+    "random_state": 42,
+    "n_jobs": 4,
+    "deterministic": true,
+    "force_col_wise": true,
+    "importance_type": "gain",
+    "verbosity": -1
+  },
+  "best_iteration": 40,
+  "features": [
+    "repeat_rank",
+    "covisit_rank",
+    "popularity_rank",
+    "covisit_score",
+    "user_item_purchase_count_28d",
+    "user_item_recency_days",
+    "variant_rank",
+    "from_variant",
+    "item_popularity_7d",
+    "item_popularity_28d",
+    "category_affinity"
+  ],
+  "validation_date": "2020-09-09",
+  "metrics": {
+    "recall_at_12": 0.05620874461697517,
+    "hit_rate_at_12": 0.1081,
+    "map_at_12": 0.026760408249288326
+  }
+}
