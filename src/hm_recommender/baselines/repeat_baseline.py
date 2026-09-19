@@ -2,11 +2,11 @@ from datetime import timedelta
 
 import polars as pl
 
-from covisitation import build_neighbors, get_covisitation_candidates
+from hm_recommender.candidates.covisitation import build_neighbors, get_covisitation_candidates
 
-from ranking_dataset import build_candidate_rows
+from hm_recommender.data.ranking_dataset import build_candidate_rows
 
-from popularity_baseline import(
+from hm_recommender.baselines.popularity_baseline import(
     DATA_DIR,
     VALIDATION_START,
     average_presicion_at_k,

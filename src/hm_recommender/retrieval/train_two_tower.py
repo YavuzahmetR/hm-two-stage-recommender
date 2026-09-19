@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from prepare_two_tower import OUTPUT_DIR
+from hm_recommender.data.prepare_two_tower import OUTPUT_DIR
 
 SEED = 42
 EMBEDDING_DIM = 64

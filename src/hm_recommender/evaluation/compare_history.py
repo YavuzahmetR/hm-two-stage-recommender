@@ -3,14 +3,14 @@ from pathlib import Path
 
 import polars as pl
 
-from covisitation import build_neighbors
-from popularity_baseline import (
+from hm_recommender.candidates.covisitation import build_neighbors
+from hm_recommender.baselines.popularity_baseline import (
     DATA_DIR,
     VALIDATION_START,
     average_precision_at_k,
     build_popularity,
 )
-from ranking_dataset import build_candidate_rows
+from hm_recommender.data.ranking_dataset import build_candidate_rows
 
 
 def main():

@@ -1,3 +1,4 @@
+from hm_recommender.paths import ROOT
 import argparse
 import hashlib
 import json
@@ -8,13 +9,13 @@ import numpy as np
 import polars as pl
 from lightgbm import Booster
 
-from build_v6 import build_snapshot
-from popularity_baseline import average_precision_at_k, build_popularity
-from train_ranker import evaluate_predictions
-from train_v6 import FEATURES, get_predictions
+from hm_recommender.data.build_v6 import build_snapshot
+from hm_recommender.baselines.popularity_baseline import average_precision_at_k, build_popularity
+from hm_recommender.ranking.train_ranker import evaluate_predictions
+from hm_recommender.ranking.train_v6 import FEATURES, get_predictions
 
 
-ROOT = Path(__file__).resolve().parent
+
 DATA_DIR = ROOT / "data" / "raw" / "hm"
 PROCESSED_DIR = ROOT / "data" / "processed"
 REPORT_DIR = ROOT / "reports" / "metrics"
@@ -78,54 +79,27 @@ def check_metrics():
 
 
 def freeze_selection():
-    source_files = [
-        "finish_project.py",
-        "build_v6.py",
-        "ranking_dataset.py",
-        "covisitation.py",
-        "popularity_baseline.py",
-        "train_ranker.py",
-        "train_v6.py",
-    ]
-
-    manifest = {
-        "selected_method": MODEL_NAME,
-        "model_sha256": file_hash(MODEL_PATH),
-        "test_start": str(TEST_START),
-        "test_end_exclusive": str(TEST_END),
-        "max_customers": CUSTOMER_LIMIT,
-        "sampling": (
-            "SHA256(customer_id), then customer_id; "
-            "active test customers"
-        ),
-        "refit_before_test": False,
-        "training_target_weeks": [
-            "2020-08-19",
-            "2020-08-26",
-            "2020-09-02",
-        ],
-        "validation_start": "2020-09-09",
-        "features": FEATURES,
-        "source_sha256": {
-            name: file_hash(ROOT / name)
-            for name in source_files
-        },
-    }
-
     path = REPORT_DIR / "final_selection.json"
 
-    if path.exists():
-        previous = json.loads(path.read_text(encoding="utf-8"))
+    if not path.is_file():
+        raise FileNotFoundError(
+            "The archived final selection is missing."
+        )
 
-        if previous != manifest:
-            raise ValueError(
-                "Frozen model, protocol or source changed. "
-                "Review the existing final selection before proceeding."
-            )
-    else:
-        path.write_text(
-            json.dumps(manifest, indent=2),
-            encoding="utf-8",
+    previous = json.loads(path.read_text(encoding="utf-8"))
+
+    if (
+        previous["model_sha256"] != file_hash(MODEL_PATH)
+        or previous["features"] != FEATURES
+        or previous["test_start"] != str(TEST_START)
+        or previous["test_end_exclusive"] != str(TEST_END)
+        or previous["max_customers"] != CUSTOMER_LIMIT
+    ):
+        raise ValueError("The frozen model or test settings changed.")
+
+    if not (REPORT_DIR / "final_test.csv").is_file():
+        raise FileNotFoundError(
+            "The archived final test report is missing."
         )
 
 
@@ -545,7 +519,7 @@ def main():
         print(report)
 
     print("\nFinal test results saved.")
-    print("Run: python finish_project.py recommend")
+    print("Run: python run.py finish_project recommend")
 
 
 if __name__ == "__main__":

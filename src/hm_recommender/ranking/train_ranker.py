@@ -1,7 +1,8 @@
+from hm_recommender.paths import save_booster
 import polars as pl
 from lightgbm import LGBMRanker
 
-from popularity_baseline import (
+from hm_recommender.baselines.popularity_baseline import (
     DATA_DIR,
     VALIDATION_START,
     average_precision_at_k,
@@ -280,9 +281,7 @@ def main():
     for name, importance in zip(FEATURES, model.feature_importances_):
         print(f"{name}: {importance:.2f}")
 
-    model.booster_.save_model(
-         str(PROCESSED_DIR / "ranker_v4.txt")
-    )
+    save_booster(model.booster_, str(PROCESSED_DIR / "ranker_v4.txt"))
 
     print("\nModel saved.")
     evaluate_baselines(validation, actual)

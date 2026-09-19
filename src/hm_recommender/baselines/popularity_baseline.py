@@ -1,9 +1,10 @@
+from hm_recommender.paths import DATA_DIR
 from datetime import date, timedelta
 from pathlib import Path
 
 import polars as pl
 
-DATA_DIR = Path("data/raw/hm")
+
 VALIDATION_START = date(2020, 9, 9)
 
 
@@ -115,7 +116,7 @@ def evaluate_map(
         raise ValueError("No customers found in the target period.")
 
     scores = [
-        average_presicion_at_k(actual, recommendations)
+        average_precision_at_k(actual, recommendations)
         for actual in actual_by_customer["actual_items"].to_list()
     ]
 

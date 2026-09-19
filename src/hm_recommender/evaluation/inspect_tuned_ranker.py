@@ -1,9 +1,10 @@
+from hm_recommender.paths import load_booster
 import polars as pl
 from lightgbm import Booster
 
-from popularity_baseline import average_precision_at_k
-from train_ranker import evaluate_predictions
-from train_v6 import (
+from hm_recommender.baselines.popularity_baseline import average_precision_at_k
+from hm_recommender.ranking.train_ranker import evaluate_predictions
+from hm_recommender.ranking.train_v6 import (
     DATA_DIR,
     PROCESSED_DIR,
     VALIDATION_DATE,
@@ -23,9 +24,7 @@ def main():
         PROCESSED_DIR / f"actual_{VALIDATION_DATE}_v6.parquet"
     ).select("customer_id", "actual_items")
 
-    model = Booster(
-        model_file=str(PROCESSED_DIR / "ranker_v6_tuned.txt")
-    )
+    model = load_booster(str(PROCESSED_DIR / "ranker_v6_tuned.txt"))
 
     features = candidates.select(
         pl.col(model.feature_name()).cast(pl.Float32)

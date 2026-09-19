@@ -6,8 +6,8 @@ import polars as pl
 import torch
 from torch import nn
 
-from prepare_two_tower import OUTPUT_DIR
-from train_two_tower import (
+from hm_recommender.data.prepare_two_tower import OUTPUT_DIR
+from hm_recommender.retrieval.train_two_tower import (
     BATCH_SIZE,
     EMBEDDING_DIM,
     LEARNING_RATE,
@@ -17,7 +17,7 @@ from train_two_tower import (
     TwoTower,
     sample_negatives,
 )
-from train_v6 import DATA_DIR, PROCESSED_DIR, VALIDATION_DATE
+from hm_recommender.ranking.train_v6 import DATA_DIR, PROCESSED_DIR, VALIDATION_DATE
 
 
 CHECKPOINT_EPOCHS = {5, 10, 15}

@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 import polars as pl
 
-from popularity_baseline import DATA_DIR, VALIDATION_START
+from hm_recommender.baselines.popularity_baseline import DATA_DIR, VALIDATION_START
 
 def build_neighbors(
         transactions: pl.LazyFrame,

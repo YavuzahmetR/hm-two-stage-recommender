@@ -1,11 +1,12 @@
+from hm_recommender.paths import save_booster
 from datetime import date
 
 import polars as pl
 from lightgbm import LGBMRanker
 
-from popularity_baseline import DATA_DIR
-from ranking_dataset import build_training_snapshot
-from train_ranker import FEATURES, evaluate_predictions
+from hm_recommender.baselines.popularity_baseline import DATA_DIR
+from hm_recommender.data.ranking_dataset import build_training_snapshot
+from hm_recommender.ranking.train_ranker import FEATURES, evaluate_predictions
 
 
 PROCESSED_DIR = DATA_DIR.parent.parent / "processed"
@@ -138,9 +139,7 @@ def main():
         feature_name=FEATURES,
     )
 
-    model.booster_.save_model(
-        str(PROCESSED_DIR / "ranker_v5.txt")
-    )
+    save_booster(model.booster_, str(PROCESSED_DIR / "ranker_v5.txt"))
 
     del train, x_train
 

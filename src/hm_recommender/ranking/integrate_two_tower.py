@@ -1,3 +1,6 @@
+from hm_recommender.paths import ROOT
+from hm_recommender.paths import load_booster
+from hm_recommender.paths import save_booster
 import gc
 import json
 import subprocess
@@ -11,12 +14,12 @@ import polars as pl
 import torch
 from lightgbm import Booster, LGBMRanker
 
-from covisitation import build_neighbors
-from feature_two_tower import FeatureTwoTower, retrieve
-from popularity_baseline import DATA_DIR
-from ranking_dataset import build_user_item_features
-from train_ranker import evaluate_predictions
-from train_v6 import (
+from hm_recommender.candidates.covisitation import build_neighbors
+from hm_recommender.retrieval.feature_two_tower import FeatureTwoTower, retrieve
+from hm_recommender.baselines.popularity_baseline import DATA_DIR
+from hm_recommender.data.ranking_dataset import build_user_item_features
+from hm_recommender.ranking.train_ranker import evaluate_predictions
+from hm_recommender.ranking.train_v6 import (
     FEATURES as BASE_FEATURES,
     PROCESSED_DIR,
     TRAIN_DATES,
@@ -33,7 +36,7 @@ FEATURES = BASE_FEATURES + ["tower_score", "tower_rank"]
 
 TOWER_ROOT = DATA_DIR.parent.parent / "two_tower_features"
 REPORT_DIR = DATA_DIR.parent.parent.parent / "reports" / "metrics"
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = ROOT
 
 
 def ensure_tower(as_of):
@@ -56,13 +59,10 @@ def ensure_tower(as_of):
         [
             sys.executable,
             "-u",
-            "-c",
-            (
-                "import feature_two_tower as ft; "
-                "ft.EPOCHS = 5; "
-                "ft.CHECKPOINT_EPOCHS = {5}; "
-                "ft.main()"
-            ),
+            str(ROOT / "run.py"),
+            "feature_two_tower",
+            "--epochs",
+            str(TOWER_EPOCH),
             "--as-of",
             str(as_of),
         ],
@@ -615,9 +615,7 @@ def main():
         group=groups,
         feature_name=FEATURES,
     )
-    model.booster_.save_model(
-        str(PROCESSED_DIR / "ranker_v7.txt")
-    )
+    save_booster(model.booster_, str(PROCESSED_DIR / "ranker_v7.txt"))
 
     del train, x_train, y_train
     gc.collect()
@@ -635,9 +633,7 @@ def main():
     if merged["as_of"].unique().to_list() != [VALIDATION_DATE]:
         raise ValueError("Unexpected validation date.")
 
-    old_model = Booster(
-        model_file=str(PROCESSED_DIR / "ranker_v6_tuned.txt")
-    )
+    old_model = load_booster(str(PROCESSED_DIR / "ranker_v6_tuned.txt"))
 
     records = []
 

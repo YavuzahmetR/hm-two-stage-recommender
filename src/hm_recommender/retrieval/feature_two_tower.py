@@ -11,9 +11,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from experiment_two_tower import evaluate_retrieval, load_evaluation
-from popularity_baseline import DATA_DIR
-from train_two_tower import NEGATIVES, sample_negatives
+from hm_recommender.retrieval.experiment_two_tower import evaluate_retrieval, load_evaluation
+from hm_recommender.baselines.popularity_baseline import DATA_DIR
+from hm_recommender.retrieval.train_two_tower import NEGATIVES, sample_negatives
 
 
 SEED = 42
@@ -389,7 +389,10 @@ def main():
         ],
         default="2020-09-09",
     )
+    parser.add_argument("--epochs", type=int, default=EPOCHS)
     args = parser.parse_args()
+    if args.epochs < 1:
+        parser.error("--epochs must be positive")
     as_of = date.fromisoformat(args.as_of)
 
     if not torch.cuda.is_available():
@@ -450,7 +453,7 @@ def main():
         f"{sum(parameter.numel() for parameter in model.parameters()):,}"
     )
 
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, args.epochs + 1):
         model.train()
         order = rng.permutation(len(train_targets))
         total_loss = 0.0
@@ -508,7 +511,7 @@ def main():
         )
 
         print(
-            f"Epoch {epoch}/{EPOCHS} | Loss: {average_loss:.6f}",
+            f"Epoch {epoch}/{args.epochs} | Loss: {average_loss:.6f}",
             flush=True,
         )
 
@@ -516,7 +519,7 @@ def main():
             REPORT_DIR / f"feature_tower_training_{as_of}.csv"
         )
 
-        if epoch not in CHECKPOINT_EPOCHS:
+        if epoch not in CHECKPOINT_EPOCHS and epoch != args.epochs:
             continue
 
         torch.save(

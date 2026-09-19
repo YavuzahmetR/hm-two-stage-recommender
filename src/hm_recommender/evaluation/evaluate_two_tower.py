@@ -4,9 +4,9 @@ import numpy as np
 import polars as pl
 import torch
 
-from prepare_two_tower import OUTPUT_DIR
-from train_two_tower import TwoTower
-from train_v6 import DATA_DIR, PROCESSED_DIR, VALIDATION_DATE
+from hm_recommender.data.prepare_two_tower import OUTPUT_DIR
+from hm_recommender.retrieval.train_two_tower import TwoTower
+from hm_recommender.ranking.train_v6 import DATA_DIR, PROCESSED_DIR, VALIDATION_DATE
 
 
 K = 150

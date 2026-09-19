@@ -4,7 +4,7 @@ from pathlib import Path
 
 import polars as pl
 
-from popularity_baseline import (
+from hm_recommender.baselines.popularity_baseline import (
     DATA_DIR,
     VALIDATION_START,
     average_precision_at_k,

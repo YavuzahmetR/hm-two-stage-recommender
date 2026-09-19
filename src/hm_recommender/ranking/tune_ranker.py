@@ -1,3 +1,5 @@
+from hm_recommender.paths import load_booster
+from hm_recommender.paths import save_booster
 import gc
 import json
 
@@ -5,8 +7,8 @@ import numpy as np
 import polars as pl
 from lightgbm import Booster, LGBMRanker, early_stopping
 
-from train_ranker import evaluate_predictions
-from train_v6 import (
+from hm_recommender.ranking.train_ranker import evaluate_predictions
+from hm_recommender.ranking.train_v6 import (
     DATA_DIR,
     FEATURES,
     PROCESSED_DIR,
@@ -177,9 +179,7 @@ def main():
     rule_metrics = evaluate_predictions(actual, rule_predictions)
     records.append({"method": "Variant rule", **rule_metrics})
 
-    original = Booster(
-        model_file=str(PROCESSED_DIR / "ranker_v6.txt")
-    )
+    original = load_booster(str(PROCESSED_DIR / "ranker_v6.txt"))
 
     if original.feature_name() != FEATURES:
         raise ValueError("V6 model feature order does not match.")
@@ -275,10 +275,7 @@ def main():
             best_score = metrics["map_at_12"]
             best_name = name
 
-            model.booster_.save_model(
-                str(PROCESSED_DIR / "ranker_v6_tuned.txt"),
-                num_iteration=model.best_iteration_,
-            )
+            save_booster(model.booster_, str(PROCESSED_DIR / "ranker_v6_tuned.txt"), num_iteration=model.best_iteration_)
 
             metadata = {
                 "trial": name,

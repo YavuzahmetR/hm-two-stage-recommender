@@ -1,10 +1,11 @@
+from hm_recommender.paths import load_booster
 from collections import defaultdict
 from pathlib import Path
 
 import polars as pl
 from lightgbm import Booster
 
-from popularity_baseline import (
+from hm_recommender.baselines.popularity_baseline import (
     DATA_DIR,
     VALIDATION_START,
     average_precision_at_k,
@@ -42,9 +43,7 @@ def main():
 
     actual_lookup = dict(actual.iter_rows())
 
-    model = Booster(
-        model_file=str(PROCESSED_DIR / f"ranker_{VERSION}.txt")
-    )
+    model = load_booster(str(PROCESSED_DIR / f"ranker_{VERSION}.txt"))
 
     features = candidates.select(
         pl.col(model.feature_name()).cast(pl.Float32)
