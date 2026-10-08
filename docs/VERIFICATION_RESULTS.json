@@ -1,0 +1,109 @@
+{
+  "python": "3.12.13 (main, Jun  2 2026, 22:47:20) [MSC v.1944 64 bit (AMD64)]",
+  "packages": {
+    "numpy": "2.5.3",
+    "polars": "2.0.0",
+    "torch": "2.6.0+cu124",
+    "lightgbm": "4.7.0"
+  },
+  "checks": [
+    {
+      "name": "report_bytes_unchanged",
+      "passed": true,
+      "files": 22
+    },
+    {
+      "name": "historical_source_provenance",
+      "passed": true,
+      "matched_files": 7,
+      "commit": "cdf6995",
+      "newline": "CRLF"
+    },
+    {
+      "name": "command_targets_import",
+      "passed": true,
+      "commands": 22
+    },
+    {
+      "name": "ap_exact_equivalence",
+      "passed": true,
+      "cases": 200
+    },
+    {
+      "name": "recorded_test_prediction_metrics",
+      "passed": true,
+      "customers": 10000,
+      "metrics": {
+        "recall_at_12": 0.05424713867532021,
+        "hit_rate_at_12": 0.0992,
+        "map_at_12": 0.027216338571501443
+      },
+      "operation": "recalculate_cached_predictions_only"
+    },
+    {
+      "name": "original_frozen_model",
+      "passed": true,
+      "sha256": "61b630395022068798c8206fdc4bf89ec96a21cc7569d00d654da0db7a7609b7",
+      "trees": 40
+    },
+    {
+      "name": "real_frozen_inference_equivalence",
+      "passed": true,
+      "customers": 128,
+      "candidate_rows": 19200,
+      "lists": "rule_and_frozen_v6",
+      "exact": true
+    },
+    {
+      "name": "restored_v4_v6_equivalence",
+      "passed": true,
+      "customers": 3,
+      "rows": 450,
+      "exact_features_labels_ranks": true
+    },
+    {
+      "name": "chronological_history_equivalence",
+      "passed": true,
+      "arrays": 4,
+      "training_examples": 6,
+      "padding_offset_preserved": true
+    },
+    {
+      "name": "attribute_encoding_equivalence",
+      "passed": true,
+      "cases": 4
+    },
+    {
+      "name": "feature_tower_real_checkpoint_forward",
+      "passed": true,
+      "customers": 4,
+      "checkpoint": "2020-09-09/model_epoch_5.pt",
+      "exact": true,
+      "device": "cpu"
+    },
+    {
+      "name": "negative_sampling_equivalence",
+      "passed": true,
+      "shape": [
+        4,
+        10
+      ],
+      "exact": true
+    },
+    {
+      "name": "archive_exact_record_strings",
+      "passed": true,
+      "rows": 9
+    }
+  ],
+  "boundary": "No training, no new held-out test predictions; final cache metrics are recalculated historical records. Real inference uses validation subset and original model.",
+  "source_ast": {
+    "base_commit": "1a8864fb1ec649b45d254918cb74bd8dae6c5635",
+    "existing_python_modules": 25,
+    "unchanged_excluding_docstrings": 23,
+    "changed": [
+      "baselines/repeat_baseline.py: repaired missing metric import alias",
+      "retrieval/feature_two_tower.py: expanded attribute expression and extracted chronology helper"
+    ]
+  }
+}

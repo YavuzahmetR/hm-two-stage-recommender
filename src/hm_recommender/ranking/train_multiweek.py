@@ -1,3 +1,4 @@
+"""Train the V5 ranker on three temporal customer-week snapshots."""
 from hm_recommender.paths import save_booster
 from datetime import date
 

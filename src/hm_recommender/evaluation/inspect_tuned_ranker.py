@@ -1,3 +1,4 @@
+"""Explain validation differences between tuned V6 and the variant rule."""
 from hm_recommender.paths import load_booster
 import polars as pl
 from lightgbm import Booster

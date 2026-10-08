@@ -1,3 +1,4 @@
+"""Select LightGBM settings using validation MAP@12 only."""
 from hm_recommender.paths import load_booster
 from hm_recommender.paths import save_booster
 import gc
@@ -61,6 +62,7 @@ def predictions_from_scores(candidates, scores):
 
 
 def make_map_metric(validation, actual):
+    """Create a LightGBM callback using all actual purchases as the AP denominator."""
     if actual["customer_id"].n_unique() != actual.height:
         raise ValueError("Actual customers must be unique.")
 
@@ -95,6 +97,7 @@ def make_map_metric(validation, actual):
     positions = np.arange(1, 13)
 
     def full_map_at_12(y_true, scores):
+        """Evaluate stable top-12 scores while keeping zero-hit customers."""
         score_matrix = scores.reshape(-1, 150)
 
         order = np.argsort(

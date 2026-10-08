@@ -1,0 +1,128 @@
+{
+  "date": "2026-10-09",
+  "scope": "Package file cleanup only; existing scientific evaluation, model constructors and archive remain.",
+  "base_snapshot": "work/cleanup-baselines/hm-two-stage-recommender.zip",
+  "removed": [
+    {
+      "path": "src/hm_recommender/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    },
+    {
+      "path": "src/hm_recommender/baselines/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    },
+    {
+      "path": "src/hm_recommender/candidates/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    },
+    {
+      "path": "src/hm_recommender/data/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    },
+    {
+      "path": "src/hm_recommender/evaluation/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    },
+    {
+      "path": "src/hm_recommender/ranking/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    },
+    {
+      "path": "src/hm_recommender/retrieval/__init__.py",
+      "reason": "Docstring-only package marker; explicit module imports use namespace packages."
+    }
+  ],
+  "software_test_suite": {
+    "present_before": false,
+    "present_after": false,
+    "removed_paths": []
+  },
+  "docker_or_compose": {
+    "present_before": false,
+    "present_after": false,
+    "removed_paths": []
+  },
+  "protected_files": {
+    "all_bytes_equal": true,
+    "report_count": 22,
+    "sha256": {
+      ".gitignore": "d949220969bd6206c6fd06e8ac6518824e5b21dc69ac6d55eddfb3256152919b",
+      "docs/VERIFICATION_RESULTS.json": "89c120a62b8aaf66a21ded1c902c077a4c298ccfa65706e97c73cf4abef17dc5",
+      "reports/metrics/feature_tower_retrieval.csv": "996a1c3fec02499227e12010e0991c78b0ead40c167f2a162c5385352f4a55c8",
+      "reports/metrics/feature_tower_training_2020-08-19.csv": "4b859e82fc40411ad3f7e43444629249b1a74ac8c8db4489e34768f24fc7d65b",
+      "reports/metrics/feature_tower_training_2020-08-26.csv": "415b51f06f39e81447de2f49f679ef8e7a62f14ef04860e387ca95921ac6be30",
+      "reports/metrics/feature_tower_training_2020-09-02.csv": "3b88b6040d9c4328dc1504f7dd5496d9c692d565d8e1b0a2db0d28039a120022",
+      "reports/metrics/feature_tower_training_2020-09-09.csv": "e25d667a36c9ac345ebeac5f2a078ef4273564ff8ea7d5f66c429c22f8bb5541",
+      "reports/metrics/final_selection.json": "b941eff26a4b206b002b47b493dfcd78c43a710a4c6e1234ec9fd4127760e396",
+      "reports/metrics/final_test.csv": "c306128893b273ab535e7ca8dd086397ad0e7f348fc0f16178bb1e0ba971cd51",
+      "reports/metrics/final_test_audit.json": "99d49da27802740189778aa3838b503b583a960283959888b7a8f4ad001fa7a7",
+      "reports/metrics/history_comparison.csv": "7793462b11168f020a1338a10a0d2f8c06e0555eb33b7edea5fa016f7bb91c3c",
+      "reports/metrics/integration_v7.csv": "31447400338275a539c9bb0cf5087de7aa85f55ba0e24b0db140e4ae4a468405",
+      "reports/metrics/integration_v7_config.json": "5de73e3f15299eee3e5485201345f41abce15064c4138b61c07fa820358468cc",
+      "reports/metrics/integration_v7_importance.csv": "f019a29461ab4745707250005bd36af28c68402d6d91b2eb394d6c384fce98a8",
+      "reports/metrics/multiweek_v5.csv": "8b4fcf2ef99c8bf35340e7cb03e3d9941b0bb9ec9cc7b42f073b44f20618b609",
+      "reports/metrics/multiweek_v6.csv": "0aff2e7c658720ecb60949eb17e0aeee0b9373ae4fc23515f0d023d67c905f24",
+      "reports/metrics/source_comparison.csv": "4d00f4fa035988bbac32b3de30ecb7aee6b67b9e05a4f52eba1372e7caeb6846",
+      "reports/metrics/tuned_segments.csv": "1d2e37494755daeb66669a0b15637636f5d1af88219e4d5cb5bddb6409e354bc",
+      "reports/metrics/tuning_v6.csv": "3e2a3f7f013a32afa576a2d613a330f3ae65ab6014349f0e452afe6f5100905b",
+      "reports/metrics/tuning_v6_best.json": "9d8afdf20da6aec4d727767d6d539b1bd49ed6576feb6e9c22b0cc0ca356da95",
+      "reports/metrics/two_tower_id_experiments.csv": "e159ce2735eaaeb9344e4fba5b63d07f38ed57505047a1133ac1b18316925569",
+      "reports/metrics/two_tower_id_training.csv": "50e48ef35756e5783806357ebaaa78936c8d3e788eb3b3cfee149ad8185944fe",
+      "reports/metrics/two_tower_v1_retrieval.csv": "1a420b029751c04caf1d05e9c2f8880d1f544c9f0ce64353a98d0bde413e6b58",
+      "reports/metrics/validation_v4.csv": "a8689c6918ee138cce6c51af1852aa195fc83b1225ef04f302debf1dced3c65c",
+      "requirements-neural.txt": "012c17ee379b10b56edc36cbf605d24efba321530dc5637800d3735a12ed06d5",
+      "requirements.txt": "4e98b8bac4cafb14a17e208a7131c85c91c90f9e1ddc79c5a8466f3d8ca7ade8"
+    }
+  },
+  "remaining_python_ast": {
+    "equivalent_files": 26,
+    "exception": "scripts/run.py: stdlib import order only; normalized import AST is equal."
+  },
+  "manual_runtime": {
+    "before_after_equal": true,
+    "frozen_model_and_cache_source": "Read-only existing Desktop hm-two-stage-recommender artifacts; no artifacts copied into Git.",
+    "result": {
+      "archive_cli_sha256": "5605f37d55babfcbd96db40258b1e571831fd9a5337ff0de24892bdc905c7cbc",
+      "archive_entry_points_equal": true,
+      "cached_cli_recommendation_sha256": "1ea4d540ca40bf2b9af5b31bbe60a6a96da4108af7d44b2d37f5d2ba522cea3d",
+      "cached_metric_customers": 10000,
+      "cached_metrics": {
+        "hit_rate_at_12": 0.0992,
+        "map_at_12": 0.027216338571501443,
+        "recall_at_12": 0.05424713867532021
+      },
+      "commands_imported": 22,
+      "feature_tower_customers": 4,
+      "feature_tower_device": "cpu",
+      "feature_tower_output_sha256": "612dba23bdae36cb400264a58847eae14f9a2f7de6c0a6efc955671653f8e63e",
+      "features": [
+        "repeat_rank",
+        "covisit_rank",
+        "popularity_rank",
+        "covisit_score",
+        "user_item_purchase_count_28d",
+        "user_item_recency_days",
+        "variant_rank",
+        "from_variant",
+        "item_popularity_7d",
+        "item_popularity_28d",
+        "category_affinity"
+      ],
+      "frozen_predictions_sha256": "f8bbdbd9fdc653af7135980c3c50ec14cfc787d15267c9a731456da216c50cae",
+      "model_sha256": "61b630395022068798c8206fdc4bf89ec96a21cc7569d00d654da0db7a7609b7",
+      "packages": {
+        "numpy": "2.5.3",
+        "polars": "2.0.0",
+        "torch": "2.6.0+cu124"
+      },
+      "rule_predictions_sha256": "45d9ce143847338b51d4078379234750c8c9e369bab25c073d010078f946867e",
+      "syntax_valid": true,
+      "trees": 40,
+      "validation_candidate_rows": 19200,
+      "validation_customers": 128
+    },
+    "ruff_f821": "All checks passed!"
+  },
+  "boundary": "No training, no fresh final-test inference, no HTTP API, no new software test suite. Metrics were recalculated from historical cached predictions; real frozen-model inference used 128 validation customers and the existing feature-tower checkpoint used 4 CPU examples.",
+  "prior_readability_verification": "docs/VERIFICATION_RESULTS.json preserved unchanged as earlier evidence."
+}

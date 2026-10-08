@@ -1,3 +1,4 @@
+"""Recent-purchase baseline and candidate source coverage comparisons."""
 from datetime import timedelta
 
 import polars as pl
@@ -9,7 +10,7 @@ from hm_recommender.data.ranking_dataset import build_candidate_rows
 from hm_recommender.baselines.popularity_baseline import(
     DATA_DIR,
     VALIDATION_START,
-    average_presicion_at_k,
+    average_precision_at_k as average_presicion_at_k,
     build_popularity
 )
 
@@ -20,7 +21,8 @@ def build_recommendations(
         k: int = 12
 ) -> list[str]:
     combined = recent_items + popular_items
-    return list(dict.fromkeys(combined))[:k]  # Remove recurring product - keep the sorting(1- recent, 2-popular) that's why we dont use set.
+    # dict removes duplicates while preserving recent-first recommendation order.
+    return list(dict.fromkeys(combined))[:k]
 
 def evaluate_candidate_recall(
         actual_by_customer: pl.DataFrame,
@@ -45,7 +47,7 @@ def evaluate_candidate_recall(
         recall_sum += hits / len(actual_items)
 
     return recall_sum / actual_by_customer.height
-        
+
 
 def evaluate_candidate_sources(
     actual_by_customer: pl.DataFrame,
@@ -255,4 +257,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+

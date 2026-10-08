@@ -1,3 +1,4 @@
+"""Produce the historical V4 validation report and oracle candidate bound."""
 from hm_recommender.paths import load_booster
 from collections import defaultdict
 from pathlib import Path
