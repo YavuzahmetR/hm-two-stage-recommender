@@ -1,3 +1,4 @@
+"""Compare ID-based retrieval checkpoints and candidate quotas."""
 import json
 import random
 

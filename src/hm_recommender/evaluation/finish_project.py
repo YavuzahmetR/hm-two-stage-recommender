@@ -1,3 +1,4 @@
+"""Read the frozen final test archive or demonstrate historical recommendations."""
 from hm_recommender.paths import ROOT
 import argparse
 import hashlib

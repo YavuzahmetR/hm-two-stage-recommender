@@ -1,3 +1,4 @@
+"""Compare 28-day and 90-day purchase-history candidate rules."""
 from datetime import timedelta
 from pathlib import Path
 

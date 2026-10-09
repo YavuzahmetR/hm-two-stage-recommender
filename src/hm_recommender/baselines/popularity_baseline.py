@@ -1,3 +1,4 @@
+"""Popularity baseline and the original per-customer AP@12 calculation."""
 from hm_recommender.paths import DATA_DIR
 from datetime import date, timedelta
 from pathlib import Path
@@ -71,6 +72,7 @@ def average_precision_at_k(
         predicted: list[str],
         k: int = 12
 ) -> float:
+    """Reward unique hits near the top; divide by min(unique actual items, k)."""
     if k<= 0:
         raise ValueError("k must be positive")
 

@@ -1,3 +1,4 @@
+"""ID-based retrieval model with the original negative-sampling procedure."""
 import json
 import random
 
@@ -18,6 +19,7 @@ LEARNING_RATE = 0.001
 TEMPERATURE = 0.1
 
 class TwoTower(nn.Module):
+    """Encode customer and item IDs as normalized vectors, then score their match."""
     def __init__(self, n_users, n_items, embedding_dim):
         super().__init__()
 
@@ -57,6 +59,7 @@ class TwoTower(nn.Module):
 
 
 def sample_negatives(user_ids, n_items, known_keys, rng):
+    """Sample items absent from each customer's historical known-item keys."""
     negatives = rng.integers(
         0,
         n_items,
@@ -65,6 +68,7 @@ def sample_negatives(user_ids, n_items, known_keys, rng):
     )
 
     for _ in range(100):
+        # Flatten (customer, item) pairs into integers for sorted-array membership.
         keys = user_ids[:, None] * n_items + negatives
         positions = np.searchsorted(known_keys, keys)
         safe_positions = np.minimum(positions, len(known_keys) - 1)

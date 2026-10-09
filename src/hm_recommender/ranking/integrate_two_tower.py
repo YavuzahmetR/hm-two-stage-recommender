@@ -1,3 +1,4 @@
+"""Historical V7 experiment combining V6 and feature-based neural candidates."""
 from hm_recommender.paths import ROOT
 from hm_recommender.paths import load_booster
 from hm_recommender.paths import save_booster

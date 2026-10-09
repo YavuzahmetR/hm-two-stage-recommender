@@ -1,3 +1,4 @@
+"""Encode item attributes and prior-day purchase histories for retrieval."""
 import argparse
 import json
 import random
@@ -31,6 +32,7 @@ REPORT_DIR = DATA_DIR.parent.parent.parent / "reports" / "metrics"
 
 
 class FeatureTwoTower(nn.Module):
+    """Combine item IDs, product types, colors, and pooled purchase-history vectors."""
     def __init__(self, n_items, n_types, n_colors, item_features):
         super().__init__()
 
@@ -76,6 +78,7 @@ class FeatureTwoTower(nn.Module):
         return F.normalize(self.item_tower(features), dim=-1)
 
     def encode_users(self, histories):
+        """Average non-padding item vectors before applying the customer tower."""
         vectors = self.encode_items(histories)
         mask = histories.ne(0).unsqueeze(-1)
 
@@ -96,11 +99,15 @@ class FeatureTwoTower(nn.Module):
 
 
 def encode_attribute(values):
+    """Map sorted known attribute values to positive IDs; zero denotes missing data."""
+    known_values = set()
+    for value in values:
+        if value is not None:
+            known_values.add(value)
+
     vocabulary = {
         value: index + 1
-        for index, value in enumerate(
-            sorted({value for value in values if value is not None})
-        )
+        for index, value in enumerate(sorted(known_values))
     }
 
     encoded = np.array(
@@ -111,7 +118,70 @@ def encode_attribute(values):
     return encoded, vocabulary
 
 
+def build_chronological_examples(daily, event_count, user_count):
+    """Build prior-day training examples and the final inference history.
+
+    Zero is padding; history item IDs use +1 while target IDs remain zero-based.
+    The original traversal, allocation, and day/item order are preserved.
+    """
+    train_histories = np.zeros(
+        (event_count, HISTORY_SIZE), dtype=np.int32
+    )
+    train_users = np.empty(event_count, dtype=np.int64)
+    train_targets = np.empty(event_count, dtype=np.int64)
+
+    inference_histories = np.zeros(
+        (user_count, HISTORY_SIZE), dtype=np.int32
+    )
+
+    current_user = None
+    recent = deque(maxlen=HISTORY_SIZE)
+    last_day = None
+    sample_count = 0
+
+    for row in daily.iter_rows(named=True):
+        user_idx = row["user_idx"]
+        target_day = row["t_dat"]
+        day_items = row["item_idx"]
+
+        if current_user != user_idx:
+            current_user = user_idx
+            recent = deque(maxlen=HISTORY_SIZE)
+            last_day = None
+
+        if recent:
+            if last_day is None or last_day >= target_day:
+                raise ValueError("Target leaked into history.")
+
+            previous_items = list(recent)
+
+            for target in day_items:
+                train_histories[
+                    sample_count, :len(previous_items)
+                ] = previous_items
+                train_users[sample_count] = user_idx
+                train_targets[sample_count] = target
+                sample_count += 1
+
+        # Add today's items only after building today's examples.
+        recent.extend(item + 1 for item in day_items)
+        last_day = target_day
+
+        inference_histories[user_idx] = 0
+        inference_histories[user_idx, :len(recent)] = list(recent)
+
+    if sample_count == 0:
+        raise ValueError("No chronological training examples.")
+
+    train_histories = train_histories[:sample_count].copy()
+    train_users = train_users[:sample_count].copy()
+    train_targets = train_targets[:sample_count].copy()
+
+    return inference_histories, train_histories, train_users, train_targets
+
+
 def prepare_data(as_of, output_dir):
+    """Prepare historical IDs, attributes, examples, and files for one snapshot."""
     history_start = as_of - timedelta(days=HISTORY_DAYS)
 
     history = (
@@ -218,58 +288,13 @@ def prepare_data(as_of, output_dir):
         .sort(["user_idx", "t_dat"])
     )
 
-    train_histories = np.zeros(
-        (indexed.height, HISTORY_SIZE), dtype=np.int32
-    )
-    train_users = np.empty(indexed.height, dtype=np.int64)
-    train_targets = np.empty(indexed.height, dtype=np.int64)
-
-    inference_histories = np.zeros(
-        (users.height, HISTORY_SIZE), dtype=np.int32
-    )
-
-    current_user = None
-    recent = deque(maxlen=HISTORY_SIZE)
-    last_day = None
-    sample_count = 0
-
-    for row in daily.iter_rows(named=True):
-        user_idx = row["user_idx"]
-        target_day = row["t_dat"]
-        day_items = row["item_idx"]
-
-        if current_user != user_idx:
-            current_user = user_idx
-            recent = deque(maxlen=HISTORY_SIZE)
-            last_day = None
-
-        if recent:
-            if last_day is None or last_day >= target_day:
-                raise ValueError("Target leaked into history.")
-
-            previous_items = list(recent)
-
-            for target in day_items:
-                train_histories[
-                    sample_count, :len(previous_items)
-                ] = previous_items
-                train_users[sample_count] = user_idx
-                train_targets[sample_count] = target
-                sample_count += 1
-
-        # Add today's items only after building today's examples.
-        recent.extend(item + 1 for item in day_items)
-        last_day = target_day
-
-        inference_histories[user_idx] = 0
-        inference_histories[user_idx, :len(recent)] = list(recent)
-
-    if sample_count == 0:
-        raise ValueError("No chronological training examples.")
-
-    train_histories = train_histories[:sample_count].copy()
-    train_users = train_users[:sample_count].copy()
-    train_targets = train_targets[:sample_count].copy()
+    (
+        inference_histories,
+        train_histories,
+        train_users,
+        train_targets,
+    ) = build_chronological_examples(daily, indexed.height, users.height)
+    sample_count = len(train_targets)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     users.write_parquet(output_dir / "users.parquet")

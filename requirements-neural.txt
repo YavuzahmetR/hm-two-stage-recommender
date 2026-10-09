@@ -1,0 +1,3 @@
+-r requirements.txt
+# Install a PyTorch build suitable for your GPU before running neural training.
+torch

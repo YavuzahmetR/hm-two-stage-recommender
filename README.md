@@ -1,10 +1,23 @@
 # H&M Two-Stage Recommender
 
-An offline fashion recommendation project using H&M purchase history and product metadata.
+## Overview
 
-The system generates 150 candidate products per customer, then ranks them with LightGBM to produce 12 recommendations. I also experimented with ID-based and feature-based two-tower retrieval to see whether neural candidates improved the final recommendations.
+An offline fashion recommendation project using H&M purchase history and product metadata. It generates 150 candidates per customer and ranks them with LightGBM to produce 12 recommendations. ID-based and feature-based two-tower experiments examine whether neural candidates improve retrieval and final ranking.
 
-## Pipeline
+The frozen V6 ranker was selected on validation before the final test. **The variant rule won on the final test week.** Recorded metrics and model-selection reports are included in `reports/metrics/`.
+
+## Scope and limitations
+
+- Local offline evaluation on sampled active purchasers, not Kaggle leaderboard or online business results.
+- One final test week; results do not describe all customers or future periods.
+- Product metadata is treated as static. Customer profile fields and images are not used by the final pipeline.
+- “No history” means no purchases during the previous 28 days, **not necessarily a new customer**.
+- Validation was used repeatedly in development; its best score is not an independent estimate.
+- Original data, frozen model, and customer-level caches are not distributed with Git. Complete training/inference reproduction requires those artifacts and a compatible environment.
+- Original dependency versions were not fully recorded. The requirements files are installation lists, not a historical lockfile.
+- Image-based retrieval is a separate project using the same article IDs.
+
+## Architecture and workflow
 
 ```text
 Recent purchases + product variants + co-visitation + popularity
@@ -16,57 +29,16 @@ Recent purchases + product variants + co-visitation + popularity
                       12 recommendations
 ```
 
-Candidate sources:
+Candidate sources, in their original priority order:
 
-- **Recent purchases:** up to 12 distinct products purchased in the previous 28 days.
-- **Product variants:** up to 20 products sharing a product code with recent purchases.
-- **Co-visitation:** up to 50 related products from customer-day baskets in the previous week.
-- **Popularity:** popular products from the previous seven days fill the remaining positions.
+1. Recent purchases: up to 12 distinct products from the previous 28 days.
+2. Product variants: up to 20 products sharing a product code with recent purchases.
+3. Co-visitation: up to 50 related products from customer-day baskets in the previous week.
+4. Popularity: products from the previous seven days fill the remaining positions.
 
-Candidates are deduplicated before ranking.
+Deduplication preserves order. Ties use explicit product-ID ordering where the original algorithm does so. Previously purchased products remain eligible because repeat purchases are valid recommendation targets.
 
-## Data
-
-The dataset comes from the [H&M Personalized Fashion Recommendations competition](https://www.kaggle.com/competitions/h-and-m-personalized-fashion-recommendations/data).
-
-Place the downloaded CSV files under:
-
-```text
-data/raw/hm/
-```
-
-The final pipeline uses `transactions_train.csv` and `articles.csv`. Customer profile fields and product images are not used.
-
-Raw data, model files, and customer-level outputs are excluded from Git.
-
-## Evaluation setup
-
-| Split | Target period | Customers |
-|---|---|---:|
-| Training | Three weeks starting August 19, August 26, and September 2, 2020 | 5,000 per week |
-| Validation | September 9–15, 2020 | 10,000 |
-| Test | September 16–22, 2020 | 10,000 |
-
-Customers are sampled deterministically by sorting the SHA256 hash of their IDs. Sampling is performed separately among customers who purchased during each target period.
-
-Candidates and features use only transactions before the prediction date. Customers whose candidate pools contain no actual target purchases remain in the evaluation.
-
-Training contains 2,250,000 rows grouped into 15,000 customer-week queries. The same customer can appear in multiple training weeks.
-
-The main metric is **MAP@12**:
-
-- **Recall@12:** the fraction of unique actual purchases retrieved, averaged per customer.
-- **HitRate@12:** the fraction of customers with at least one correct recommendation.
-- **MAP@12:** rewards correct products appearing earlier in the recommendation list.
-- **Candidate Recall@150:** measures coverage before ranking.
-
-AP@12 uses unique actual purchases and divides by the smaller of the number of actual purchases and 12.
-
-These are local offline results on sampled customers, not Kaggle leaderboard scores.
-
-## Ranker
-
-The selected LightGBM model uses 11 features:
+The selected LightGBM V6 model uses 11 features, in this order:
 
 ```text
 repeat_rank
@@ -82,127 +54,99 @@ item_popularity_28d
 category_affinity
 ```
 
-Selected settings:
+Selected settings: LambdaRank, 40 trees, 31 leaves, learning rate 0.05, minimum child samples 50, L2 regularization 1.0. Parameters and iteration count were selected by validation MAP@12.
 
-- Objective: LambdaRank
-- Trees: 40
-- Leaves: 31
-- Learning rate: 0.05
-- Minimum child samples: 50
-- L2 regularization: 1.0
+Two neural retrieval approaches were also evaluated:
 
-Parameters and the number of iterations were selected using validation MAP@12.
+- ID-based: separate customer and product embeddings.
+- Feature-based: item ID, product type, and color; customer vectors are built from up to 20 historical purchase events. Training histories exclude the target day. Negative samples exclude products purchased in the historical snapshot.
 
-## Validation results
+The integrated experiment combines the existing first 125 candidates with the first 25 neural candidates, deduplicates, and backfills to 150. Separate five-epoch models were trained for each ranking snapshot, using transactions before its target week. V7 adds neural similarity and retrieval rank as features. It was not selected because validation performance was lower than V6.
 
-All methods below use the same 10,000 validation customers.
-
-| Method | Recall@12 | HitRate@12 | MAP@12 |
-|---|---:|---:|---:|
-| Variant rule | 0.057929 | 0.112300 | 0.025981 |
-| Tuned LightGBM V6 | 0.056209 | 0.108100 | 0.026760 |
-| Tuned V6 with two-tower candidates | 0.056209 | 0.108100 | 0.026762 |
-| Retrained ranker with two-tower features | 0.048978 | 0.094900 | 0.023365 |
-
-The variant rule orders candidates by recent purchases, product variants, co-visitation, and popularity without a learned ranker.
-
-I selected **tuned V6 with its original candidate sources** before evaluating the test week.
-
-Adding neural candidates produced a negligible change in MAP@12. The additional retrieval pipeline was therefore not included in the final selection.
-
-## Held-out test results
-
-The selected model was frozen and evaluated without refitting or further parameter tuning.
-
-| Method | Recall@12 | HitRate@12 | MAP@12 |
-|---|---:|---:|---:|
-| Popularity | 0.026280 | 0.068000 | 0.008686 |
-| Variant rule | 0.061043 | 0.112600 | 0.028687 |
-| Frozen tuned V6 | 0.054247 | 0.099200 | 0.027216 |
-
-The rule-based method outperformed the selected ranker on this test week. I kept the original model selection and reported the result rather than choosing a different method after inspecting the test.
-
-Candidate coverage:
-
-| Metric | Value |
-|---|---:|
-| Candidate Recall@150 | 0.188256 |
-| Candidate HitRate@150 | 0.357700 |
-
-### Results by recent purchase history
-
-“Without history” means no purchases in the previous 28 days, not necessarily a new customer.
-
-| Customer group | Customers | Method | Recall@12 | HitRate@12 | MAP@12 |
-|---|---:|---|---:|---:|---:|
-| With history | 4,514 | Variant rule | 0.101285 | 0.167036 | 0.052276 |
-| With history | 4,514 | Frozen V6 | 0.100800 | 0.171910 | 0.052982 |
-| Without history | 5,486 | Variant rule | 0.027932 | 0.067809 | 0.009278 |
-| Without history | 5,486 | Frozen V6 | 0.015943 | 0.039373 | 0.006016 |
-
-The ranker slightly improved MAP and HitRate for customers with recent history. Its weaker results for customers without recent history account for the overall disadvantage against the rule-based method.
-
-This observation is an error-analysis finding, not a new policy tuned on the test set.
-
-## Two-tower experiments
-
-Two neural retrieval approaches were evaluated:
-
-1. **ID-based:** separate customer and product embeddings.
-2. **Feature-based:** product ID, product type, and color representations, with customer representations built from historical purchases.
-
-The feature-based model uses up to 20 historical purchase events. Training histories exclude the target day. Previously purchased products remain eligible recommendations because repeat purchases are valid targets.
-
-Negative samples exclude products the customer purchased within the historical snapshot.
-
-The feature-based retrieval experiment improved candidate coverage slightly:
-
-| Candidate pool | Validation Recall@150 |
-|---|---:|
-| Original V6 candidates | 0.175006 |
-| V6 combined with feature-based two-tower candidates | 0.176286 |
-
-The combined pool used the existing first 125 candidates and the first 25 neural candidates, followed by deduplication and backfilling to 150.
-
-Separate five-epoch models were trained for each historical ranking snapshot. Their training data ended before the corresponding target week.
-
-The integrated V7 ranker used the neural similarity score and retrieval rank as additional features. Its validation performance was lower than V6, so it was not selected.
-
-## Repository structure
+## Project layout
 
 ```text
-run.py                     # Command entry point
+run.py                         # Compatible root command entry point
+scripts/run.py                 # Explicit command-to-module routing
 src/hm_recommender/
-  data/                    # Inspection and dataset preparation
-  baselines/               # Popularity and repeat-purchase baselines
-  candidates/              # Co-visitation candidate generation
-  ranking/                 # LightGBM training, tuning and integration
-  retrieval/               # Two-tower models and experiments
-  evaluation/              # Comparisons, final test and recommendation CLI
-  paths.py                 # Shared paths and model file I/O
-reports/metrics/           # Aggregate results and experiment metadata
-data/                      # Local datasets and models (Git-ignored)
+  data/                        # Original inspection and snapshot preparation
+  baselines/                   # Popularity and recent-purchase rules
+  candidates/                  # Co-visitation neighbors
+  ranking/                     # LightGBM training, tuning, integration
+  retrieval/                   # ID-based and feature-based two-tower experiments
+  evaluation/                  # Comparisons, archived results, historical CLI
+  paths.py                     # Shared paths and Unicode-safe model I/O
+  provenance.py                # Existing source-relocation checker
+reports/metrics/               # Unmodified aggregate historical records
+requirements.txt               # Core packages; not a historical lock
+requirements-neural.txt        # Optional neural packages
 ```
 
-Use `python run.py --help` to list commands.
+Local `data/` holds raw data, processed datasets, models, and caches. Only root `/data/` is Git-ignored; the source package `src/hm_recommender/data/` is tracked. Source modules are tracked separately from local data and model artifacts.
 
-The source files were reorganized after the final test. The original test results are preserved. Reading the saved report does not rerun evaluation.
+## Data and artifacts
 
-## Run the project
+Download data from the [H&M Personalized Fashion Recommendations competition](https://www.kaggle.com/competitions/h-and-m-personalized-fashion-recommendations/data) and place CSVs in `data/raw/hm/`. The final pipeline uses `transactions_train.csv` and `articles.csv`; the optional inspection command also opens `customers.csv`.
 
-Run commands from the repository root.
+Models and customer-level outputs remain excluded from Git. Important local paths:
 
-The core pipeline uses Python, NumPy, Polars, LightGBM, and scikit-learn:
+- `data/processed/ranker_v6_tuned.txt`: original frozen selected model.
+- `data/processed/final_test_predictions.parquet`: historical recommendation cache.
+- `data/processed/final_test_actual.parquet`: historical customer target lists.
+- `data/two_tower/2020-09-09/`: ID-based retrieval artifacts.
+- `data/two_tower_features/<snapshot-date>/`: feature-based retrieval artifacts.
+
+| Recorded file | Contents |
+|---|---|
+| `tuning_v6.csv`, `tuning_v6_best.json` | Parameter comparisons and selected settings |
+| `two_tower_id_experiments.csv`, `two_tower_id_training.csv` | ID-based retrieval experiments and training history |
+| `feature_tower_retrieval.csv`, `feature_tower_training_<date>.csv` | Feature-based comparisons and training histories |
+| `integration_v7.csv`, `integration_v7_config.json`, `integration_v7_importance.csv` | Integration results, settings, feature importance |
+| `multiweek_v5.csv`, `multiweek_v6.csv`, `validation_v4.csv` | Earlier ranker comparisons |
+| `history_comparison.csv`, `source_comparison.csv`, `tuned_segments.csv` | Validation analysis |
+| `two_tower_v1_retrieval.csv` | Original ID-tower coverage comparison |
+| `final_selection.json` | Frozen selection, original hashes, evaluation protocol |
+| `final_test.csv` | Overall and segment-level test metrics |
+| `final_test_audit.json` | Candidate coverage and original recorded checks |
+
+Hashes in `final_selection.json` belong to the original source and model. Import relocation and comments change current source hashes without changing archived provenance. Preparation modules come from the original Git history at `cdf6995`.
+The required frozen ranker SHA-256 is
+`61b630395022068798c8206fdc4bf89ec96a21cc7569d00d654da0db7a7609b7`.
+
+## Setup
+
+Reading the archive needs only Python. For the core offline pipeline, create an environment and install:
 
 ```bash
-python -m pip install numpy polars lightgbm scikit-learn
+python -m venv .venv
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-The neural experiments additionally require PyTorch. They were run with PyTorch 2.6.0+cu124 on an NVIDIA GeForce RTX 3050 Laptop GPU.
+Neural experiments additionally require PyTorch:
 
-### Train and tune V6
+```bash
+python -m pip install -r requirements-neural.txt
+```
 
-After downloading the raw data:
+Install a PyTorch build suitable for your GPU. The historical experiments used PyTorch 2.6.0+cu124 on an NVIDIA GeForce RTX 3050 Laptop GPU. The neural training commands retain their original CUDA requirement.
+
+## Usage
+
+Run from the repository root. Root `run.py` remains compatible; `python scripts/run.py ...` reaches the same dispatcher. The dispatcher resolves the repository path even when the terminal starts elsewhere.
+
+### Read archived results from a fresh clone
+
+```bash
+python run.py archive_results
+python run.py archive_results --json
+python run.py --help
+```
+
+The archive command reads the recorded CSV and JSON files without importing Polars, LightGBM, or PyTorch. JSON metric values stay exact CSV strings. It reports current file hashes; it does not execute a model, verify absent artifacts, or rerun the experiment.
+
+### Reproduce historical training when data and environment are available
 
 ```bash
 python run.py ranking_dataset
@@ -212,73 +156,101 @@ python run.py train_v6
 python run.py tune_ranker
 ```
 
-These scripts prepare the training snapshots and repeat the validation-based parameter search. They do not tune against the test week.
+These commands build training snapshots and perform the validation-based parameter search. They write local artifacts and experiment reports, so use a separate reproduction checkout if preserving the distributed archive. They do not tune on the test week. Retraining can produce a different model hash and does not replace the original frozen selection automatically.
 
-Retraining may produce a different model hash. The archived final evaluation is tied to the original selected model; retraining does not automatically replace that selection.
+The four preparation modules missing from the published reorganization were recovered from Git history. The source now contains them; raw data and model artifacts are still needed for full execution.
 
-### View archived test results
-
-The aggregate results can be read directly from `reports/metrics/final_test.csv` without running any code.
-
-With the original model artifact available locally:
+### Validate and display the original archive with the frozen model
 
 ```bash
 python run.py finish_project evaluate
 ```
 
-This command verifies the model hash and test settings, then displays the archived report. It does not run a new evaluation. It requires the original model artifact, `final_selection.json`, and `final_test.csv`.
+This existing command verifies the original model hash and test settings, then displays the saved report without reevaluation. It requires the exact original model, `final_selection.json`, and `final_test.csv`. It loads the ML packages, unlike the new archive-only command.
 
-Model artifacts are excluded from Git, so this command is not ready to run from a fresh clone alone.
-
-### Generate recommendations
-
-Display an example from locally saved predictions:
+### Generate historical recommendations
 
 ```bash
 python run.py finish_project recommend
-```
-
-This requires the original selected model and the local prediction cache. Neither is included in Git.
-
-Without the prediction cache, provide a customer ID and the raw data:
-
-```bash
 python run.py finish_project recommend --customer-id YOUR_CUSTOMER_ID
 ```
 
-The original selected model is still required. The command uses the historical cutoff **September 16, 2020**.
+The first form reads an example from the local prediction cache. The second uses a cached result when available; otherwise it rebuilds candidates from raw data and scores them with the original frozen model. Both require that model. Historical cutoff: **September 16, 2020**.
 
-Cached customers return their saved recommendations. Other requests rebuild historical candidates and score them with the frozen model. Customers without recent history receive popularity-based candidates ranked using available item features.
+Customers without recent history receive popularity candidates ranked with the available item features. This is an offline demonstration, not a live retail service.
 
-This is an offline demonstration, not a live retail service.
+This repository has no HTTP server. Recommendation JSON contains `as_of`,
+`customer_id` and twelve ordered article IDs in `predictions`.
 
-## Reports
+If the cache is missing, the message “Run evaluate first” does not create one:
+`evaluate` only reads recorded reports. Supply the original prediction cache,
+or a customer ID together with the frozen model and raw data. Missing or invalid
+assets may produce CLI errors or tracebacks. Rescoring recorded final predictions
+also requires `data/processed/final_test_actual.parquet`.
 
-Aggregate experiment outputs are stored in `reports/metrics/`.
+## Evaluation protocol
 
-| File | Contents |
-|---|---|
-| `tuning_v6.csv` | LightGBM parameter comparisons |
-| `two_tower_id_experiments.csv` | ID-based retrieval experiments |
-| `feature_tower_retrieval.csv` | Feature-based retrieval comparisons |
-| `integration_v7.csv` | Ranker and two-tower integration results |
-| `final_selection.json` | Original frozen selection and evaluation protocol |
-| `final_test.csv` | Overall and segment-level test metrics |
-| `final_test_audit.json` | Candidate coverage and checks recorded during the original test |
+| Split | Target period | Customers |
+|---|---|---:|
+| Training | Three weeks starting August 19, August 26, and September 2, 2020 | 5,000 per week |
+| Validation | September 9–15, 2020 | 10,000 |
+| Original final test | September 16–22, 2020 | 10,000 |
 
-Model artifacts and customer-level predictions remain under `data/`.
+Sampling sorts SHA256 hashes of customer IDs, then the IDs, separately among customers purchasing in each target period. Candidates and features use only transactions before the prediction date. Customers with zero relevant items in their candidate pool remain in evaluation.
 
-## Lessons and limitations
+Training has 2,250,000 rows across 15,000 customer-week queries. A customer may appear in several weeks. The selected model was frozen before the original test and evaluated without refitting or further parameter tuning.
 
-- Better candidate recall did not guarantee better top-12 recommendations.
-- A lower neural training loss did not reliably identify the best retrieval checkpoint.
-- Rule-based recommendations remained competitive and won on the final test week.
-- Recent-history and no-history customers behaved differently.
-- Validation was used repeatedly during development, so its best score is not an independent estimate.
-- Evaluation covers sampled active purchasers and one final week, not all customers or an online setting.
-- Product metadata is treated as static.
-- Dependency versions are not fully locked, and the original model artifacts are not distributed with the repository.
-- The evaluation code includes checks for metric examples, historical input boundaries, candidate uniqueness, recency bounds, and prediction validity. These are not an exhaustive test suite.
+- **MAP@12**, the selection metric: average per-customer AP@12. AP uses unique actual purchases, ignores duplicate predicted hits, and divides by `min(number of unique actual purchases, 12)`.
+- **Recall@12**: fraction of unique actual purchases retrieved, averaged per customer.
+- **HitRate@12**: fraction of customers with at least one correct recommendation.
+- **Candidate Recall@150**: coverage before ranking; it does not measure top-12 order quality.
 
+“Held out” describes the original experiment. These results have since been inspected; reusing this test week does not create a new unseen evaluation.
 
-Image-based cold-start retrieval is planned as a separate project using the same article IDs.
+## Results and interpretation
+
+### Recorded validation results
+
+All methods use the same 10,000 validation customers.
+
+| Method | Recall@12 | HitRate@12 | MAP@12 |
+|---|---:|---:|---:|
+| Variant rule | 0.057929 | 0.112300 | 0.025981 |
+| Tuned LightGBM V6 | 0.056209 | 0.108100 | 0.026760 |
+| Tuned V6 with two-tower candidates | 0.056209 | 0.108100 | 0.026762 |
+| Retrained ranker with two-tower features | 0.048978 | 0.094900 | 0.023365 |
+
+The variant rule orders recent purchases, variants, co-visitation, and popularity without a learned ranker. Tuned V6 with its original sources was selected before the original test. Neural additions produced a negligible MAP@12 difference, so they were excluded from the final selection.
+
+| Candidate pool | Validation Recall@150 |
+|---|---:|
+| Original V6 candidates | 0.175006 |
+| V6 combined with feature-based two-tower candidates | 0.176286 |
+
+The small increase in candidate coverage did not establish a useful ranking improvement. Lower neural training loss also did not reliably identify the best retrieval checkpoint.
+
+### Recorded final test results
+
+| Method | Recall@12 | HitRate@12 | MAP@12 |
+|---|---:|---:|---:|
+| Popularity | 0.026280 | 0.068000 | 0.008686 |
+| Variant rule | 0.061043 | 0.112600 | 0.028687 |
+| Frozen tuned V6 | 0.054247 | 0.099200 | 0.027216 |
+
+The rule won on this test week. The original selection was retained; there was no retrospective choice of the test winner as the selected model.
+
+| Coverage metric | Value |
+|---|---:|
+| Candidate Recall@150 | 0.188256 |
+| Candidate HitRate@150 | 0.357700 |
+
+### Recorded results by recent purchase history
+
+| Customer group | Customers | Method | Recall@12 | HitRate@12 | MAP@12 |
+|---|---:|---|---:|---:|---:|
+| `history_28d` | 4,514 | Variant rule | 0.101285 | 0.167036 | 0.052276 |
+| `history_28d` | 4,514 | Frozen V6 | 0.100800 | 0.171910 | 0.052982 |
+| `no_history_28d` | 5,486 | Variant rule | 0.027932 | 0.067809 | 0.009278 |
+| `no_history_28d` | 5,486 | Frozen V6 | 0.015943 | 0.039373 | 0.006016 |
+
+V6 slightly improved MAP and HitRate for customers with recent history. Its weaker no-recent-history performance explains the overall disadvantage. This is an error-analysis finding, not a routing policy tuned on the test set. Absence of 28-day history alone does not establish true new-user cold start.

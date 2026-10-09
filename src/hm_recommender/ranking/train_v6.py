@@ -1,3 +1,4 @@
+"""Train V6 and produce rule-based or model-based top-12 predictions."""
 from hm_recommender.paths import save_booster
 from datetime import date
 
@@ -37,6 +38,7 @@ def get_predictions(
     candidates: pl.DataFrame,
     model=None,
 ) -> pl.DataFrame:
+    """Return 12 items per customer using the original rule or model score ordering."""
     if model is None:
         ranked = candidates.sort(
             [

@@ -1,3 +1,4 @@
+"""Evaluate the original ID-tower candidate pool with history-based fallback."""
 import json
 
 import numpy as np

@@ -1,3 +1,4 @@
+"""Build product neighbors from historical customer-day baskets."""
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 

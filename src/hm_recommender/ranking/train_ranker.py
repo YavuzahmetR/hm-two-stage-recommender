@@ -1,3 +1,4 @@
+"""Train the V4 ranker and compute customer-averaged recommendation metrics."""
 from hm_recommender.paths import save_booster
 import polars as pl
 from lightgbm import LGBMRanker
