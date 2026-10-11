@@ -4,3 +4,9 @@ __pycache__/
 *.pyc
 /data/
 .env
+.cache/
+# Training commands can recreate detailed experiment reports locally.
+reports/metrics/*
+!reports/metrics/final_test.csv
+!reports/metrics/final_selection.json
+!reports/metrics/final_test_audit.json
