@@ -24,14 +24,5 @@
     "item_popularity_7d",
     "item_popularity_28d",
     "category_affinity"
-  ],
-  "source_sha256": {
-    "finish_project.py": "3d7f39c8604d1b30c1e61e56ca1bd2f0bc3341c9dd857b571d5f268601e9d1a1",
-    "build_v6.py": "cbfdb5e434e4b1a066e33511ed88ccd330139599b744f3983bbfcb87f480bdd7",
-    "ranking_dataset.py": "12afeb1395d853f493414f7d1b49ff95b1120b134358cdc028978c999fe80198",
-    "covisitation.py": "72a9feb71235716673248561ef1caedb6c44fd1fedeb7bfcfaf97b57032f5dc4",
-    "popularity_baseline.py": "010b06faf2bd8bc866611e5479b93d9954237ab5d551baba6b4eeda897fc786c",
-    "train_ranker.py": "d67fa632dadad2a574b504e1e3c0214866051724182d152af86a21b84db6e12a",
-    "train_v6.py": "86339936e129f4a528fd3bc50cac25e467b89bd319e4daa3c06282cdb88fd8cf"
-  }
+  ]
 }

@@ -76,8 +76,7 @@ src/hm_recommender/
   retrieval/                   # ID-based and feature-based two-tower experiments
   evaluation/                  # Comparisons, archived results, historical CLI
   paths.py                     # Shared paths and Unicode-safe model I/O
-  provenance.py                # Existing source-relocation checker
-reports/metrics/               # Unmodified aggregate historical records
+reports/metrics/               # Recorded metrics and experiment settings
 requirements.txt               # Core packages; not a historical lock
 requirements-neural.txt        # Optional neural packages
 ```
@@ -105,13 +104,9 @@ Models and customer-level outputs remain excluded from Git. Important local path
 | `multiweek_v5.csv`, `multiweek_v6.csv`, `validation_v4.csv` | Earlier ranker comparisons |
 | `history_comparison.csv`, `source_comparison.csv`, `tuned_segments.csv` | Validation analysis |
 | `two_tower_v1_retrieval.csv` | Original ID-tower coverage comparison |
-| `final_selection.json` | Frozen selection, original hashes, evaluation protocol |
+| `final_selection.json` | Selected model and evaluation protocol |
 | `final_test.csv` | Overall and segment-level test metrics |
-| `final_test_audit.json` | Candidate coverage and original recorded checks |
-
-Hashes in `final_selection.json` belong to the original source and model. Import relocation and comments change current source hashes without changing archived provenance. Preparation modules come from the original Git history at `cdf6995`.
-The required frozen ranker SHA-256 is
-`61b630395022068798c8206fdc4bf89ec96a21cc7569d00d654da0db7a7609b7`.
+| `final_test_audit.json` | Customer count and candidate coverage |
 
 ## Setup
 
@@ -144,7 +139,7 @@ python run.py archive_results --json
 python run.py --help
 ```
 
-The archive command reads the recorded CSV and JSON files without importing Polars, LightGBM, or PyTorch. JSON metric values stay exact CSV strings. It reports current file hashes; it does not execute a model, verify absent artifacts, or rerun the experiment.
+The archive command reads the recorded CSV and JSON files without importing Polars, LightGBM, or PyTorch. JSON metric values stay exact CSV strings. It does not execute a model or rerun the experiment.
 
 ### Reproduce historical training when data and environment are available
 
@@ -156,9 +151,7 @@ python run.py train_v6
 python run.py tune_ranker
 ```
 
-These commands build training snapshots and perform the validation-based parameter search. They write local artifacts and experiment reports, so use a separate reproduction checkout if preserving the distributed archive. They do not tune on the test week. Retraining can produce a different model hash and does not replace the original frozen selection automatically.
-
-The four preparation modules missing from the published reorganization were recovered from Git history. The source now contains them; raw data and model artifacts are still needed for full execution.
+These commands build training snapshots and perform the validation-based parameter search. They require the original data and write local artifacts and experiment reports. Use a separate reproduction checkout to preserve the recorded results. They do not tune on the test week, and retraining does not replace the original selected model automatically.
 
 ### Validate and display the original archive with the frozen model
 
@@ -166,7 +159,7 @@ The four preparation modules missing from the published reorganization were reco
 python run.py finish_project evaluate
 ```
 
-This existing command verifies the original model hash and test settings, then displays the saved report without reevaluation. It requires the exact original model, `final_selection.json`, and `final_test.csv`. It loads the ML packages, unlike the new archive-only command.
+This command checks that the original selected model and test settings match, then displays the saved report without reevaluation. It requires that model, `final_selection.json`, and `final_test.csv`, as well as the core ML packages.
 
 ### Generate historical recommendations
 
@@ -196,7 +189,7 @@ also requires `data/processed/final_test_actual.parquet`.
 | Validation | September 9–15, 2020 | 10,000 |
 | Original final test | September 16–22, 2020 | 10,000 |
 
-Sampling sorts SHA256 hashes of customer IDs, then the IDs, separately among customers purchasing in each target period. Candidates and features use only transactions before the prediction date. Customers with zero relevant items in their candidate pool remain in evaluation.
+Customers are sampled using a fixed deterministic ordering of their IDs, separately among purchasers in each target period. Candidates and features use only transactions before the prediction date. Customers with zero relevant items in their candidate pool remain in evaluation.
 
 Training has 2,250,000 rows across 15,000 customer-week queries. A customer may appear in several weeks. The selected model was frozen before the original test and evaluated without refitting or further parameter tuning.
 

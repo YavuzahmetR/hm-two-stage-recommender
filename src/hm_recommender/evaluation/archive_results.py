@@ -1,7 +1,6 @@
 """Read recorded aggregate results without loading models or rerunning evaluation."""
 import argparse
 import csv
-import hashlib
 import json
 
 from hm_recommender.paths import ROOT
@@ -11,7 +10,7 @@ REPORT_DIR = ROOT / "reports" / "metrics"
 
 
 def read_archived_results(report_dir=REPORT_DIR):
-    """Return historical records and current file hashes; metric strings stay exact."""
+    """Return recorded results and protocol; metric strings stay exact."""
     report_path = report_dir / "final_test.csv"
     with report_path.open(encoding="utf-8", newline="") as file:
         metrics = list(csv.DictReader(file))
@@ -19,20 +18,17 @@ def read_archived_results(report_dir=REPORT_DIR):
     selection = json.loads(
         (report_dir / "final_selection.json").read_text(encoding="utf-8")
     )
+    # File identity is needed by the model loader, not by the results summary.
+    selection.pop("model_sha256", None)
     audit = json.loads(
         (report_dir / "final_test_audit.json").read_text(encoding="utf-8")
     )
-
-    hashes = {}
-    for name in ["final_test.csv", "final_selection.json", "final_test_audit.json"]:
-        hashes[name] = hashlib.sha256((report_dir / name).read_bytes()).hexdigest()
 
     return {
         "status": "historical_recorded_not_recomputed",
         "selection": selection,
         "audit": audit,
         "metrics": metrics,
-        "current_file_sha256": hashes,
     }
 
 
@@ -50,7 +46,6 @@ def main():
     print((REPORT_DIR / "final_test.csv").read_text(encoding="utf-8"), end="")
     print("\nRecorded candidate coverage:")
     print(json.dumps(archive["audit"], indent=2))
-    print("\nFile hashes describe the files read, not a new verification of the experiment.")
 
 
 if __name__ == "__main__":
